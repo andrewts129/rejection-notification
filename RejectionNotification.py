@@ -30,7 +30,8 @@ def main():
     inbox = Inbox(auth=auth, getNow=False)
 
     # Gets all messages received in the last two minutes
-    two_minutes_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=2)
+    # Gives an extra 10 seconds for startup time
+    two_minutes_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=2, seconds=10)
     inbox.setFilter("DateTimeReceived gt " + two_minutes_ago.strftime("%Y-%m-%dT%H:%M:%SZ"))
     inbox.getMessages()
 
