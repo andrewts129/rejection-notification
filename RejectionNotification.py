@@ -2,6 +2,9 @@ from O365 import Inbox
 import os
 import subprocess
 import datetime
+import logging
+
+logging.basicConfig(filename="logs/rejection-notification.log", format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 def is_rejection(subject, body):
@@ -35,10 +38,19 @@ def main():
     inbox.setFilter("DateTimeReceived gt " + two_minutes_ago.strftime("%Y-%m-%dT%H:%M:%SZ"))
     inbox.getMessages()
 
+    logging.info("Found " + str(len(inbox.messages)) + " messages")
+
     for message in inbox.messages:
+        logging.info("Found message with subject: " + message.getSubject())
         if is_rejection(message.getSubject(), message.getBody()):
+            logging.info("Rejected!")
             play_taps()
+        else:
+            logging.info("Not rejected...")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.error(e)
