@@ -1,32 +1,7 @@
 from O365 import Inbox, Message
 import os
 import subprocess
-import pickle
-import hashlib
-
-
-def get_read_messages():
-    if os.path.isfile("processed_messages.txt"):
-        with open("processed_messages.pkl", "rb") as f:
-            read_messages = pickle.load(f)
-
-        return read_messages
-    else:
-        return []
-
-
-def hash_message(subject_text, body_text):
-    m1 = hashlib.md5(body_text.lower().encode("utf-8"))
-    m2 = hashlib.md5(subject_text.lower().encode("utf-8"))
-
-    return str(m1.hexdigest()) + str(m2.hexdigest)
-
-
-def dump_read_messages(new_read_messages):
-    hashed_messages = [hash_message(message.getSubject(), message.getBody()) for message in new_read_messages]
-
-    with open("processed_messages.pkl", "ab") as f:
-        pickle.dump(hashed_messages, f)
+import datetime
 
 
 def is_rejection(subject, body):
@@ -53,16 +28,15 @@ def play_taps():
     subprocess.call(["mpg321", "Taps.mp3"])
 
 
-def main():
-    auth = (os.environ["EMAIL_ADDRESS"], os.environ["PASSWORD"])
-    inbox = Inbox(auth=auth, getNow=False)
+auth = (os.environ["EMAIL_ADDRESS"], os.environ["PASSWORD"])
+inbox = Inbox(auth=auth, getNow=False)
 
-    inbox.getMessages()
-    for message in inbox.messages:
-        print(message)
+# Gets all messages received in the last two minutes
+two_minutes_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=2)
+inbox.setFilter("DateTimeReceived gt " + two_minutes_ago.strftime("%Y-%m-%dT%H:%M:%SZ"))
+inbox.getMessages()
 
-    play_taps()
+for message in inbox.messages:
+    print(message)
 
 
-if __name__ == "__main__":
-    main()
