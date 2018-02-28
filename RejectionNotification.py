@@ -14,9 +14,11 @@ def is_rejection(subject, body):
     required_words = ["intern", "internship"]
     required_counts = [full_text.count(x) for x in required_words]
 
-    # Should have a few of these
+    # Should have at least a few of these
     troublesome_words = ["unfortunately", "other candidates", "other applicants", "another candidate",
-                         "another applicant", "for your interest"]
+                         "another applicant", "your interest", "not be moving forward",
+                         "unable to move forward", "not to move forward", "not selected for this position",
+                         "unable to offer you a position at this time"]
     troublesome_counts = [full_text.count(x) for x in troublesome_words]
 
     return sum(required_counts) >= 1 and sum(troublesome_counts) >= 2
