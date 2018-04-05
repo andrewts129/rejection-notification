@@ -19,7 +19,7 @@ def is_rejection(subject, body):
                          "another applicant", "your interest", "not be moving forward",
                          "unable to move forward", "not to move forward", "not selected for this position",
                          "unable to offer you a position at this time", "has been filled", "wish you the best of luck",
-                         "was not selected"]
+                         "was not selected", "carefully reviewed your"]
     troublesome_counts = [full_text.count(x) for x in troublesome_words]
 
     return sum(required_counts) >= 1 and sum(troublesome_counts) >= 2
