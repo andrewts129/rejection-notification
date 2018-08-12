@@ -1,3 +1,5 @@
 .idea/
 Taps.mp3
 venv/
+*.pkl
+emails.json
