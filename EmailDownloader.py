@@ -2,8 +2,11 @@ import O365
 import os
 import json
 import uuid
+from bs4 import BeautifulSoup
+from bs4.element import Comment
 
-MESSAGES_PER_FETCH = 20
+
+MESSAGES_PER_FETCH = 40
 
 
 def download_all_emails(inbox):
@@ -19,10 +22,25 @@ def download_all_emails(inbox):
 
 
 def build_email_dict(message_obj):
-    return {"senderEmail": message_obj.getSenderEmail(),
-            "senderName": message_obj.getSenderName(),
-            "subject": message_obj.getSubject(),
-            "body": message_obj.getBody(),
+    def text_from_html(body):
+        # https://stackoverflow.com/questions/1936466/beautifulsoup-grab-visible-webpage-text
+        def tag_visible(element):
+            if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+                return False
+            if isinstance(element, Comment):
+                return False
+            return True
+
+        soup = BeautifulSoup(body, 'html.parser')
+        texts = soup.findAll(text=True)
+        visible_texts = filter(tag_visible, texts)
+        return u" ".join(t.strip() for t in visible_texts)
+
+    return {"senderEmail": message_obj.getSenderEmail() if message_obj.getSenderEmail() is not None else "",
+            "senderName": message_obj.getSenderName() if message_obj.getSenderName() is not None else "",
+            "subject": message_obj.getSubject() if message_obj.getSubject() is not None else "",
+            "bodyHtml": message_obj.getBody() if message_obj.getBody() is not None else "",
+            "bodyText": text_from_html(message_obj.getBody()) if message_obj.getBody() is not None else "",
             "timeSent": message_obj.json["DateTimeSent"],
             "id": str(uuid.uuid4())}
 

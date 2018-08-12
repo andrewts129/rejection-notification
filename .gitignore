@@ -2,4 +2,6 @@
 Taps.mp3
 venv/
 *.pkl
-emails.json
+*.json
+*.txt
+GetEmailSubset.py
