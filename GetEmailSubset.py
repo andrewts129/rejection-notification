@@ -20,30 +20,9 @@ def get_random_subset(emails, subset_size):
     return [email for email in emails if random.random() < (subset_size / len(emails))]
 
 
-def is_rejection_simple(subject, body):
-    full_text = (subject + body).lower()
-
-    # Needs to have one of these
-    required_words = ["intern", "internship"]
-    required_counts = [full_text.count(x) for x in required_words]
-
-    # Should have at least a few of these
-    troublesome_words = ["unfortunately", "other candidates", "other applicants", "another candidate",
-                         "another applicant", "your interest", "not be moving forward",
-                         "unable to move forward", "not to move forward", "not selected for this position",
-                         "unable to offer you a position at this time", "has been filled", "wish you the best of luck",
-                         "was not selected", "carefully reviewed your", "unable to move forward"]
-    troublesome_counts = [full_text.count(x) for x in troublesome_words]
-
-    return sum(required_counts) >= 1 and sum(troublesome_counts) >= 2
-
-
 def main():
     with open(INPUT_FILE_NAME, "r") as file:
         emails = json.load(file)
-
-    for email in emails:
-        email["isRejection"] = is_rejection_simple(email["subject"], email["bodyText"])
 
     email_subset = get_weighted_subset(emails, TOTAL_SUBSET_SIZE)
 

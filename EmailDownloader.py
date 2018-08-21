@@ -39,8 +39,7 @@ def build_email_dict(message_obj):
     return {"senderEmail": message_obj.getSenderEmail() if message_obj.getSenderEmail() is not None else "",
             "senderName": message_obj.getSenderName() if message_obj.getSenderName() is not None else "",
             "subject": message_obj.getSubject() if message_obj.getSubject() is not None else "",
-            "bodyHtml": message_obj.getBody() if message_obj.getBody() is not None else "",
-            "bodyText": text_from_html(message_obj.getBody()) if message_obj.getBody() is not None else "",
+            "body": text_from_html(message_obj.getBody()) if message_obj.getBody() is not None else "",
             "timeSent": message_obj.json["DateTimeSent"],
             "id": str(uuid.uuid4())}
 
