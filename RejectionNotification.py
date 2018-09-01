@@ -5,57 +5,21 @@ import datetime
 import logging
 import schedule
 import time
-from sklearn.externals import joblib
 from bs4 import BeautifulSoup
 from bs4.element import Comment
-import json
-import json
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
-from sklearn.linear_model import LogisticRegression
-from sklearn import svm
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import confusion_matrix, roc_auc_score
-from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
-from imblearn.over_sampling import SMOTE
 from sklearn.externals import joblib
+import requests
 
 
-logging.basicConfig(filename="logs/rejection-notification.log", format='%(asctime)s %(message)s', level=logging.INFO)
+#logging.basicConfig(filename="logs/rejection-notification.log", format='%(asctime)s %(message)s', level=logging.INFO)
 
 
-def train_model():
-    with open("emails-labelled.json", "r") as file:
-        data = json.load(file)
-
-    subject_vectorizer = TfidfVectorizer()
-    subject_vectorizer.fit([email["subject"] for email in data])
-    body_vectorizer = TfidfVectorizer()
-    body_vectorizer.fit([email["bodyText"] for email in data])
-    sender_name_vectorizer = TfidfVectorizer()
-    sender_name_vectorizer.fit([email["senderName"] for email in data])
-
-    subject_feature = np.asarray(
-        [row for row in subject_vectorizer.transform([email["subject"] for email in data]).A])
-    body_feature = np.asarray(
-        [row for row in subject_vectorizer.transform([email["bodyText"] for email in data]).A])
-    sender_name_feature = np.asarray(
-        [row for row in subject_vectorizer.transform([email["senderName"] for email in data]).A])
-
-    features = np.asarray([subject_feature, body_feature, sender_name_feature])
-
-    # Needed bc scikit's fit function only accepts 2D arrays
-    features = features.reshape(len(data), -1)
-
-    labels = np.asarray([int(email["isRejection"]) for email in data])
-
-    model = LogisticRegression(class_weight="balanced")
-    model.fit(features, labels)
-
-    # Adjusts the intercept because the data is heavily biased (way more non-rejections than rejections)
-    prior = 0.57
-    model.intercept_ += np.log(prior / (1 - prior)) - np.log((1 - prior) / prior)
+def load_model():
+    model = joblib.load("model.pkl")
+    subject_vectorizer = joblib.load("subject_vectorizer.pkl")
+    body_vectorizer = joblib.load("body_vectorizer.pkl")
+    sender_name_vectorizer = joblib.load("sender_name_vectorizer.pkl")
 
     return model, subject_vectorizer, body_vectorizer, sender_name_vectorizer
 
@@ -82,40 +46,57 @@ def check_for_rejections(inbox, model, subject_vectorizer, body_vectorizer, send
                     "body": text_from_html(message_obj.getBody()) if message_obj.getBody() is not None else ""}
 
         # Gets all messages received in the last minute
-        one_minute_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=1, seconds=1)
+        one_minute_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=1)
         inbox.setFilter("DateTimeReceived gt " + one_minute_ago.strftime("%Y-%m-%dT%H:%M:%SZ"))
         inbox.getMessages()
 
         return [build_email_dict(message) for message in inbox.messages]
 
+    def contains_rejection(messages):
+        body_feature = np.asarray(
+            [row for row in body_vectorizer.transform([email["body"] for email in messages]).A])
+        subject_feature = np.asarray(
+            [row for row in subject_vectorizer.transform([email["subject"] for email in messages]).A])
+        sender_name_feature = np.asarray(
+            [row for row in sender_name_vectorizer.transform([email["senderName"] for email in messages]).A])
+
+        # Padding with zeros so that all features have the same length
+        skeleton = np.zeros(body_feature.shape)
+        skeleton[:subject_feature.shape[0], :subject_feature.shape[1]] = subject_feature
+        subject_feature = skeleton
+
+        # Padding with zeros so that all features have the same length
+        skeleton = np.zeros(body_feature.shape)
+        skeleton[:sender_name_feature.shape[0], :sender_name_feature.shape[1]] = sender_name_feature
+        sender_name_feature = skeleton
+
+        features = np.asarray([body_feature, subject_feature, sender_name_feature])
+
+        features = features.reshape(len(messages), -1)
+
+        predictions = model.predict(features)
+
+        return sum(predictions) > 0
+
     messages = get_messages(inbox)
-
-    subject_feature = np.asarray(
-        [row for row in subject_vectorizer.transform([email["subject"] for email in messages]).A])
-    body_feature = np.asarray(
-        [row for row in subject_vectorizer.transform([email["bodyText"] for email in messages]).A])
-    sender_name_feature = np.asarray(
-        [row for row in subject_vectorizer.transform([email["senderName"] for email in messages]).A])
-
-    features = np.asarray([subject_feature, body_feature, sender_name_feature])
-
-    predictions = model.predict(features)
-
-    if sum(predictions) > 0:
+    if len(messages) > 0 and contains_rejection(messages):
         play_music()
 
 
 def play_music():
-    subprocess.call(["mpg321", "Taps.mp3"])
+    requests.post(os.environ["SOUND_SERVER_URL"] + "/play?filename=" + os.environ["MUSIC_FILE_NAME"])
 
 
 def main():
     auth = (os.environ["EMAIL_ADDRESS"], os.environ["PASSWORD"])
     inbox = Inbox(auth=auth, getNow=False)
 
-    messages =
-    model, subject_vectorizer, body_vectorizer, sender_name_vectorizer = train_model(messages)
-    schedule.every(1).minutes.do(check_for_rejections, inbox, model, subject_vectorizer, body_vectorizer, sender_name_vectorizer)
+    model, subject_vectorizer, body_vectorizer, sender_name_vectorizer = load_model()
+
+    check_for_rejections(inbox, model, subject_vectorizer, body_vectorizer, sender_name_vectorizer)
+    schedule.every(1).minutes.do(
+        check_for_rejections, inbox, model, subject_vectorizer, body_vectorizer, sender_name_vectorizer
+    )
 
     while True:
         schedule.run_pending()
@@ -123,7 +104,9 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logging.error(e)
+    # try:
+    #     main()
+    # except Exception as e:
+    #     logging.error(e)
+
+    main()

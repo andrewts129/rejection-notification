@@ -76,3 +76,7 @@ print("ROC AUC Score: " + str(roc_auc_score(test_labels, predictions)))
 
 print("Dumping...")
 joblib.dump(model, "model.pkl", compress=9)
+joblib.dump(body_vectorizer, "body_vectorizer.pkl", compress=9)
+joblib.dump(subject_vectorizer, "subject_vectorizer.pkl", compress=9)
+joblib.dump(sender_name_vectorizer, "sender_name_vectorizer.pkl", compress=9)
+
