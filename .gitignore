@@ -1,3 +1,7 @@
 .idea/
 Taps.mp3
 venv/
+*.pkl
+*.json
+*.txt
+GetEmailSubset.py
